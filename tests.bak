@@ -1,0 +1,59 @@
+#lang racket
+(require rackunit)
+(require "scanner.rkt")
+(require "main.rkt")
+
+;; Define the test input strings to validate the scanner and main file
+;; These strings simulate the input file that the scanner should process.
+(define valid-input1 '("BEGIN" "VAR x;" "x := 10;" "PRINT x;" "END."))
+(define invalid-input1 '("BEGIN" "VAR y;" "@invalidToken;" "y := 15;" "END."))
+(define valid-input2 '("BEGIN" "VAR a, b;" "a := 5;" "b := a + 7;" "PRINT b;" "END."))
+(define valid-input3 '("x = y + 23 * (sqrt a) :"))  ; New example input for the scanner
+
+;; Function to test the scanner's output
+(define (test-scanner)
+  ;; Test the scanner with valid input 1
+  (check-equal? (scanner valid-input1)
+                ;; Expected output: List of tokens identified by the scanner
+                '((keyword "BEGIN") (keyword "VAR") (identifier "x") (symbol ";")
+                  (identifier "x") (symbol ":=") (integer "10") (symbol ";")
+                  (keyword "PRINT") (identifier "x") (symbol ";") (keyword "END") (symbol "."))
+                "Testing scanner with valid input1 failed.")
+  ;; Test the scanner with invalid input, expecting an exception to be thrown
+  (check-exn exn:fail? (lambda () (scanner invalid-input1))
+             "Testing scanner with invalid input1 did not throw expected error.")
+  ;; Test the scanner with valid input 2
+  (check-equal? (scanner valid-input2)
+                ;; Expected output: List of tokens for valid input 2
+                '((keyword "BEGIN") (keyword "VAR") (identifier "a") (symbol ",") (identifier "b") (symbol ";")
+                  (identifier "a") (symbol ":=") (integer "5") (symbol ";") (identifier "b") (symbol ":=")
+                  (identifier "a") (operator "+") (integer "7") (symbol ";") (keyword "PRINT")
+                  (identifier "b") (symbol ";") (keyword "END") (symbol "."))
+                "Testing scanner with valid input2 failed.")
+  ;; Test the scanner with valid input 3 (new example)
+  (check-equal? (scanner valid-input3)
+                ;; Expected output: List of tokens for valid input 3
+                '((ID "x") (assign-op "=") (ID "y") (add-op "+") (Integer "23")
+                  (Mult-Exp "*") (symbol "(") (ID "sqrt") (ID "a") (symbol ")") (colon ":"))
+                "Testing scanner with valid input3 failed."))
+
+;; Function to test the main file workflow
+(define (test-main-workflow)
+  ;; Test the full workflow starting with valid input 1
+  (define tokens-valid1 (scanner valid-input1))  ; Get tokens from the scanner
+  (check-true (process-tokens tokens-valid1)     ; Process tokens and verify success
+              "Testing main workflow with valid input1 failed.")
+  ;; Test the full workflow starting with valid input 2
+  (define tokens-valid2 (scanner valid-input2))  ; Get tokens from the scanner
+  (check-true (process-tokens tokens-valid2)     ; Process tokens and verify success
+              "Testing main workflow with valid input2 failed.")
+  ;; Test the full workflow starting with valid input 3
+  (define tokens-valid3 (scanner valid-input3))  ; Get tokens from the scanner
+  (check-true (process-tokens tokens-valid3)     ; Process tokens and verify success
+              "Testing main workflow with valid input3 failed."))
+
+;; Run all tests
+;; Define a test suite to run both the scanner and main workflow tests
+(test-suite "Full System Test"
+  (test-case "Scanner Test" (test-scanner))       ; Test the scanner's functionality
+  (test-case "Main Workflow Test" (test-main-workflow))) ; Test the main workflow
